@@ -55,7 +55,6 @@ extension Ghostty.SurfaceView {
         // Clear any existing search
         clearSearchHighlights()
 
-        // NOTE: The Zig search API is currently case-sensitive only
         let searchQuery = query
 
         // Perform search on background thread to avoid blocking UI

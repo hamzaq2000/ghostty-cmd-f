@@ -135,8 +135,9 @@ const SlidingWindow = struct {
     /// do enough to prune it.
     data_offset: usize = 0,
 
-    /// The needle we're searching for. Does not own the memory.
-    needle: []const u8,
+    /// The needle we're searching for (lowercase for case-insensitive search).
+    /// Owns the memory.
+    needle: []u8,
 
     /// A buffer to store the overlap search data. This is used to search
     /// overlaps between pages where the match starts on one page and
@@ -167,16 +168,24 @@ const SlidingWindow = struct {
         const overlap_buf = try alloc.alloc(u8, needle.len * 2);
         errdefer alloc.free(overlap_buf);
 
+        // Create a lowercase copy of the needle for case-insensitive search
+        const lowercase_needle = try alloc.alloc(u8, needle.len);
+        errdefer alloc.free(lowercase_needle);
+        for (needle, 0..) |c, i| {
+            lowercase_needle[i] = std.ascii.toLower(c);
+        }
+
         return .{
             .alloc = alloc,
             .data = data,
             .meta = meta,
-            .needle = needle,
+            .needle = lowercase_needle,
             .overlap_buf = overlap_buf,
         };
     }
 
     pub fn deinit(self: *SlidingWindow) void {
+        self.alloc.free(self.needle);
         self.alloc.free(self.overlap_buf);
         self.data.deinit(self.alloc);
 
@@ -467,8 +476,14 @@ const SlidingWindow = struct {
         try self.data.ensureUnusedCapacity(self.alloc, encoded.written().len);
         try self.meta.ensureUnusedCapacity(self.alloc, 1);
 
+        // Lowercase the encoded data for case-insensitive search
+        const page_data = encoded.written();
+        for (page_data) |*c| {
+            c.* = std.ascii.toLower(c.*);
+        }
+
         // Append our new node to the circular buffer.
-        try self.data.appendSlice(encoded.written());
+        try self.data.appendSlice(page_data);
         try self.meta.append(meta);
 
         self.assertIntegrity();
@@ -813,7 +828,9 @@ test "SlidingWindow single append across circular buffer boundary" {
     try testing.expectEqual(1, w.meta.len());
 
     // Change the needle, just needs to be the same length (not a real API)
-    w.needle = "boo";
+    alloc.free(w.needle);
+    w.needle = try alloc.alloc(u8, 3);
+    @memcpy(w.needle, "boo");
 
     // Add new page, now wraps
     try w.append(node);
@@ -868,7 +885,9 @@ test "SlidingWindow single append match on boundary" {
     try testing.expectEqual(1, w.meta.len());
 
     // Change the needle, just needs to be the same length (not a real API)
-    w.needle = "boo!";
+    alloc.free(w.needle);
+    w.needle = try alloc.alloc(u8, 4);
+    @memcpy(w.needle, "boo!");
 
     // Add new page, now wraps
     try w.append(node);
