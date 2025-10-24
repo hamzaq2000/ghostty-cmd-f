@@ -82,6 +82,14 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         DebugBuildWarningView()
                     }
 
+                    // Find panel - part of the window chrome, not an overlay
+                    if viewModel.findPanelIsShowing, let surfaceView = lastFocusedSurface.value {
+                        FindPanelView(
+                            surfaceView: surfaceView,
+                            isPresented: $viewModel.findPanelIsShowing
+                        )
+                    }
+
                     TerminalSplitTreeView(
                         tree: viewModel.surfaceTree,
                         onResize: { delegate?.splitDidResize(node: $0, to: $1) })
@@ -115,11 +123,6 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         updateViewModel: (NSApp.delegate as? AppDelegate)?.updateViewModel) { action in
                         self.delegate?.performAction(action, on: surfaceView)
                     }
-
-                    FindPanelView(
-                        surfaceView: surfaceView,
-                        isPresented: $viewModel.findPanelIsShowing
-                    )
                 }
 
                 // Show update information above all else.

@@ -25,115 +25,105 @@ struct FindPanelView: View {
     @FocusState private var searchFieldFocused: Bool
 
     var body: some View {
-        ZStack {
-            if isPresented {
-                GeometryReader { geometry in
-                    VStack {
-                        Spacer()
+        HStack(spacing: 8) {
+            Spacer()
 
-                        HStack(spacing: 8) {
-                            Spacer()
+            // Search text field
+            HStack(spacing: 4) {
+                Image(systemName: "magnifyingglass")
+                    .foregroundColor(.secondary)
+                    .font(.system(size: 12))
 
-                            // Search text field
-                            HStack(spacing: 4) {
-                                Image(systemName: "magnifyingglass")
-                                    .foregroundColor(.secondary)
-                                    .font(.system(size: 12))
-
-                                TextField("Find", text: $searchText)
-                                    .textFieldStyle(.plain)
-                                    .font(.system(size: 13))
-                                    .frame(width: 200)
-                                    .focused($searchFieldFocused)
-                                    .onSubmit {
-                                        findNext()
-                                    }
-                                    .onChange(of: searchText) { newValue in
-                                        performSearch()
-                                    }
-
-                                if !searchText.isEmpty {
-                                    Button(action: {
-                                        searchText = ""
-                                        totalMatches = 0
-                                        currentMatchIndex = 0
-                                        clearHighlights()
-                                    }) {
-                                        Image(systemName: "xmark.circle.fill")
-                                            .foregroundColor(.secondary)
-                                            .font(.system(size: 12))
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .background(Color(NSColor.controlBackgroundColor))
-                            .cornerRadius(4)
-
-                            // Match counter
-                            if totalMatches > 0 {
-                                Text("\(currentMatchIndex + 1) of \(totalMatches)")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 4)
-                            } else if !searchText.isEmpty {
-                                Text("No results")
-                                    .font(.system(size: 11))
-                                    .foregroundColor(.secondary)
-                                    .padding(.horizontal, 4)
-                            }
-
-                            // Previous button
-                            Button(action: findPrevious) {
-                                Image(systemName: "chevron.up")
-                                    .font(.system(size: 11))
-                            }
-                            .buttonStyle(.borderless)
-                            .disabled(totalMatches == 0)
-                            .help("Find Previous (Shift+Return)")
-
-                            // Next button
-                            Button(action: findNext) {
-                                Image(systemName: "chevron.down")
-                                    .font(.system(size: 11))
-                            }
-                            .buttonStyle(.borderless)
-                            .disabled(totalMatches == 0)
-                            .help("Find Next (Return)")
-
-                            // Case sensitive toggle
-                            Button(action: { caseSensitive.toggle() }) {
-                                Text("Aa")
-                                    .font(.system(size: 11, weight: .medium))
-                                    .foregroundColor(caseSensitive ? .accentColor : .secondary)
-                            }
-                            .buttonStyle(.borderless)
-                            .help("Match Case")
-
-                            // Close button
-                            Button(action: { isPresented = false }) {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 11))
-                            }
-                            .buttonStyle(.borderless)
-                            .help("Close (Escape)")
-                            .keyboardShortcut(.escape, modifiers: [])
-                        }
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            Color(NSColor.controlBackgroundColor)
-                                .opacity(0.95)
-                        )
-                        .cornerRadius(6)
-                        .shadow(color: Color.black.opacity(0.1), radius: 4, x: 0, y: 2)
-                        .padding(.trailing, 16)
-                        .padding(.bottom, 16)
+                TextField("Find", text: $searchText)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 13))
+                    .frame(width: 200)
+                    .focused($searchFieldFocused)
+                    .onSubmit {
+                        findNext()
                     }
-                    .frame(width: geometry.size.width, height: geometry.size.height, alignment: .bottom)
+                    .onChange(of: searchText) { newValue in
+                        performSearch()
+                    }
+
+                if !searchText.isEmpty {
+                    Button(action: {
+                        searchText = ""
+                        totalMatches = 0
+                        currentMatchIndex = 0
+                        clearHighlights()
+                    }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundColor(.secondary)
+                            .font(.system(size: 12))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(4)
+
+            // Match counter
+            if totalMatches > 0 {
+                Text("\(currentMatchIndex + 1) of \(totalMatches)")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 4)
+            } else if !searchText.isEmpty {
+                Text("No results")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+                    .padding(.horizontal, 4)
+            }
+
+            // Previous button
+            Button(action: findPrevious) {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.borderless)
+            .disabled(totalMatches == 0)
+            .help("Find Previous (Shift+Return)")
+
+            // Next button
+            Button(action: findNext) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.borderless)
+            .disabled(totalMatches == 0)
+            .help("Find Next (Return)")
+
+            // Case sensitive toggle
+            Button(action: { caseSensitive.toggle() }) {
+                Text("Aa")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(caseSensitive ? .accentColor : .secondary)
+            }
+            .buttonStyle(.borderless)
+            .help("Match Case")
+
+            // Close button
+            Button(action: { isPresented = false }) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 11))
+            }
+            .buttonStyle(.borderless)
+            .help("Close (Escape)")
+            .keyboardShortcut(.escape, modifiers: [])
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            Color(NSColor.controlBackgroundColor)
+                .opacity(0.95)
+        )
+        .onAppear {
+            // Focus the search field when the view appears
+            DispatchQueue.main.async {
+                searchFieldFocused = true
             }
         }
         .onChange(of: isPresented) { newValue in
