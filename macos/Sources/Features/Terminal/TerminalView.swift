@@ -35,6 +35,9 @@ protocol TerminalViewModel: ObservableObject {
     /// The find panel state.
     var findPanelIsShowing: Bool { get set }
 
+    /// Tracks whether the find panel search field is currently focused.
+    var findPanelSearchFieldFocused: Bool { get set }
+
     /// The update overlay should be visible.
     var updateOverlayIsVisible: Bool { get }
 }
@@ -86,7 +89,8 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                     if viewModel.findPanelIsShowing, let surfaceView = lastFocusedSurface.value {
                         FindPanelView(
                             surfaceView: surfaceView,
-                            isPresented: $viewModel.findPanelIsShowing
+                            isPresented: $viewModel.findPanelIsShowing,
+                            searchFieldFocused: $viewModel.findPanelSearchFieldFocused
                         )
                     }
 

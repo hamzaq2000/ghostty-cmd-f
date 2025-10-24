@@ -1119,17 +1119,7 @@ extension Ghostty {
                 return false
             }
 
-            // Only process events if we're focused. Some key events like C-/ macOS
-            // appears to send to the first view in the hierarchy rather than the
-            // the first responder (I don't know why). This prevents us from handling it.
-            // Besides C-/, its important we don't process key equivalents if unfocused
-            // because there are other event listeners for that (i.e. AppDelegate's
-            // local event handler).
-            if (!focused) {
-                return false
-            }
-
-            // Handle Cmd+F for find panel
+            // Handle Cmd+F for find panel (before focus check so it works even when find panel is focused)
             if event.modifierFlags.contains(.command) &&
                !event.modifierFlags.contains(.shift) &&
                !event.modifierFlags.contains(.option) &&
@@ -1138,6 +1128,16 @@ extension Ghostty {
                 // Send the action up the responder chain
                 NSApp.sendAction(#selector(BaseTerminalController.toggleFindPanel(_:)), to: nil, from: self)
                 return true
+            }
+
+            // Only process events if we're focused. Some key events like C-/ macOS
+            // appears to send to the first view in the hierarchy rather than the
+            // the first responder (I don't know why). This prevents us from handling it.
+            // Besides C-/, its important we don't process key equivalents if unfocused
+            // because there are other event listeners for that (i.e. AppDelegate's
+            // local event handler).
+            if (!focused) {
+                return false
             }
 
             // If this event as-is would result in a key binding then we send it.

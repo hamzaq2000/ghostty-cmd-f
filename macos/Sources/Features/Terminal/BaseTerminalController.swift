@@ -52,6 +52,9 @@ class BaseTerminalController: NSWindowController,
     /// This can be set to show/hide the find panel.
     @Published var findPanelIsShowing: Bool = false
 
+    /// Tracks whether the find panel search field is currently focused.
+    @Published var findPanelSearchFieldFocused: Bool = false
+
     /// Set if the terminal view should show the update overlay.
     @Published var updateOverlayIsVisible: Bool = false
 
@@ -1117,7 +1120,19 @@ class BaseTerminalController: NSWindowController,
     }
 
     @IBAction func toggleFindPanel(_ sender: Any?) {
-        findPanelIsShowing.toggle()
+        if findPanelIsShowing {
+            // If panel is showing and search field is focused, close it
+            // Otherwise, focus the search field
+            if findPanelSearchFieldFocused {
+                findPanelIsShowing = false
+            } else {
+                // Panel is showing but field not focused, focus it
+                findPanelSearchFieldFocused = true
+            }
+        } else {
+            // Panel not showing, show it (will auto-focus)
+            findPanelIsShowing = true
+        }
     }
 
     @objc func resetTerminal(_ sender: Any) {

@@ -9,6 +9,9 @@ struct FindPanelView: View {
     /// Set this to true to show the view, this will be set to false when dismissed.
     @Binding var isPresented: Bool
 
+    /// Binding to track whether the search field is focused (synced with parent).
+    @Binding var searchFieldFocused: Bool
+
     /// The search query text.
     @State private var searchText: String = ""
 
@@ -18,8 +21,8 @@ struct FindPanelView: View {
     /// Total number of matches found.
     @State private var totalMatches: Int = 0
 
-    /// Focus state for the search field.
-    @FocusState private var searchFieldFocused: Bool
+    /// Internal focus state for the search field.
+    @FocusState private var searchFieldFocusedInternal: Bool
 
     var body: some View {
         HStack(spacing: 8) {
@@ -35,7 +38,7 @@ struct FindPanelView: View {
                     .textFieldStyle(.plain)
                     .font(.system(size: 13))
                     .frame(width: 200)
-                    .focused($searchFieldFocused)
+                    .focused($searchFieldFocusedInternal)
                     .onSubmit {
                         findNext()
                     }
@@ -111,14 +114,24 @@ struct FindPanelView: View {
         .onAppear {
             // Focus the search field when the view appears
             DispatchQueue.main.async {
-                searchFieldFocused = true
+                searchFieldFocusedInternal = true
+            }
+        }
+        .onChange(of: searchFieldFocusedInternal) { newValue in
+            // Report focus state to parent
+            searchFieldFocused = newValue
+        }
+        .onChange(of: searchFieldFocused) { newValue in
+            // Only respond to focus requests (true), not unfocus
+            if newValue && !searchFieldFocusedInternal {
+                searchFieldFocusedInternal = true
             }
         }
         .onChange(of: isPresented) { newValue in
             if newValue {
                 // Focus the search field when shown
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    searchFieldFocused = true
+                    searchFieldFocusedInternal = true
                 }
             } else {
                 // Clear search when dismissed
