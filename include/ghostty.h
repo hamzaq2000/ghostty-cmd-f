@@ -1010,7 +1010,7 @@ typedef struct ghostty_search_handle_s* ghostty_search_handle_t;
 
 ghostty_search_handle_t ghostty_surface_search_create(ghostty_surface_t, const char*);
 size_t ghostty_surface_search_count(ghostty_search_handle_t);
-void ghostty_surface_search_highlight(ghostty_surface_t, ghostty_search_handle_t, size_t index);
+bool ghostty_surface_search_highlight(ghostty_surface_t, ghostty_search_handle_t, size_t index);
 void ghostty_surface_search_clear(ghostty_surface_t);
 void ghostty_surface_search_free(ghostty_search_handle_t);
 

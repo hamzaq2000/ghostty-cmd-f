@@ -111,8 +111,19 @@ extension Ghostty.SurfaceView {
         // Update the current index
         state.currentIndex = index
 
-        // Highlight this match
-        ghostty_surface_search_highlight(surface, state.handle, index)
+        // Try to highlight - if it fails (e.g., after resize), re-run the search
+        if !ghostty_surface_search_highlight(surface, state.handle, index) {
+            // Search results are no longer valid due to reflow/resize
+            // Re-run the search with the same query to get updated positions
+            let query = state.query
+            let caseSensitive = state.caseSensitive
+            performSearch(query: query, caseSensitive: caseSensitive) { [weak self] newCount in
+                guard let self = self, newCount > 0 else { return }
+                // Highlight the first match in the updated results
+                self.highlightMatch(at: 0)
+            }
+            return
+        }
 
         // Trigger a refresh to show the highlight
         ghostty_surface_refresh(surface)

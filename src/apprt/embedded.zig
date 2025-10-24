@@ -1679,8 +1679,8 @@ pub const CAPI = struct {
         c_surface: *Surface,
         handle: *SearchHandle,
         index: usize,
-    ) void {
-        if (index >= handle.selections.len) return;
+    ) bool {
+        if (index >= handle.selections.len) return false;
 
         c_surface.core_surface.renderer_state.mutex.lock();
         defer c_surface.core_surface.renderer_state.mutex.unlock();
@@ -1688,27 +1688,35 @@ pub const CAPI = struct {
         const t: *terminal.Terminal = c_surface.core_surface.renderer_state.terminal;
         const sel = handle.selections[index];
 
-        t.screen.select(sel) catch {
-            t.screen.clearSelection();
-            t.screen.search_mode = false;
-            return;
-        };
-
-        // Enable search mode to use yellow highlighting
-        t.screen.search_mode = true;
-
-        // Scroll to the match if it's not in the viewport
-        // Get the start pin from the selection
+        // Check if the pin is still valid (might be invalid after reflow/resize)
         const start_pin = switch (sel.bounds) {
             .tracked => |bounds| bounds.start.*,
             .untracked => |bounds| bounds.start,
         };
+
+        if (!t.screen.pages.pinIsValid(start_pin)) {
+            // Pin is invalid, clear search state
+            t.screen.clearSelection();
+            t.screen.search_mode = false;
+            return false;
+        }
+
+        t.screen.select(sel) catch {
+            t.screen.clearSelection();
+            t.screen.search_mode = false;
+            return false;
+        };
+
+        // Enable search mode to use yellow highlighting
+        t.screen.search_mode = true;
 
         // Scroll to show the match at the top of the viewport
         t.screen.pages.scroll(.{ .pin = start_pin });
 
         // Mark the screen as dirty to trigger a refresh
         t.screen.dirty.selection = true;
+
+        return true;
     }
 
     export fn ghostty_surface_search_clear(c_surface: *Surface) void {
