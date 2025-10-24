@@ -1655,6 +1655,9 @@ pub const CAPI = struct {
             return null;
         };
 
+        // Reverse the results so matches are ordered bottom-to-top (most recent first)
+        std.mem.reverse(terminal.Selection, results);
+
         // Create handle
         const handle = global.alloc.create(SearchHandle) catch {
             global.alloc.free(results);
