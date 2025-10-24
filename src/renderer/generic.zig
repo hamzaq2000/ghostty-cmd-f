@@ -2637,9 +2637,9 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                     // The final background color for the cell.
                     const bg = bg: {
                         if (selected) {
-                            // Use yellow for search match highlighting
+                            // Use bright yellow for search match highlighting
                             if (screen.search_mode) {
-                                break :bg terminal.color.RGB{ .r = 255, .g = 255, .b = 100 };
+                                break :bg terminal.color.RGB{ .r = 255, .g = 220, .b = 0 };
                             }
 
                             // If we have an explicit selection background color
