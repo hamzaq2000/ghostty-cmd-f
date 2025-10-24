@@ -144,9 +144,18 @@ struct FindPanelView: View {
             return
         }
 
+        // Capture the search text to check if it's still current when results come back
+        let capturedSearchText = searchText
+
         // NOTE: The Zig search API is currently case-sensitive only,
         // so we always pass the original search text and caseSensitive=true
         surfaceView.performSearch(query: searchText, caseSensitive: true) { matches in
+            // If search text changed or was cleared, clear highlights and ignore results
+            if self.searchText != capturedSearchText {
+                self.clearHighlights()
+                return
+            }
+
             totalMatches = matches
             if matches > 0 {
                 currentMatchIndex = 0
