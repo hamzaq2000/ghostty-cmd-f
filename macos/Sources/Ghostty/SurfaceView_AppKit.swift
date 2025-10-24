@@ -1129,6 +1129,17 @@ extension Ghostty {
                 return false
             }
 
+            // Handle Cmd+F for find panel
+            if event.modifierFlags.contains(.command) &&
+               !event.modifierFlags.contains(.shift) &&
+               !event.modifierFlags.contains(.option) &&
+               !event.modifierFlags.contains(.control) &&
+               event.charactersIgnoringModifiers == "f" {
+                // Send the action up the responder chain
+                NSApp.sendAction(#selector(BaseTerminalController.toggleFindPanel(_:)), to: nil, from: self)
+                return true
+            }
+
             // If this event as-is would result in a key binding then we send it.
             if let surface {
                 var ghosttyEvent = event.ghosttyKeyEvent(GHOSTTY_ACTION_PRESS)

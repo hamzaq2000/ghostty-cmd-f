@@ -1600,6 +1600,101 @@ pub const CAPI = struct {
         ptr.deinit();
     }
 
+    /// Search API
+
+    const SearchResults = extern struct {
+        selections: [*]Selection,
+        count: usize,
+
+        pub fn deinit(self: *SearchResults) void {
+            if (self.count > 0) {
+                global.alloc.free(self.selections[0..self.count]);
+            }
+        }
+    };
+
+    /// Perform a search and return all matches at once.
+    /// This holds the terminal lock for the entire search to ensure thread safety.
+    /// The caller must free the results with ghostty_surface_search_free.
+    export fn ghostty_surface_search_create(
+        c_surface: *Surface,
+        c_needle: [*:0]const u8,
+        c_results: *SearchResults,
+    ) bool {
+        const needle = std.mem.span(c_needle);
+        if (needle.len == 0) return false;
+
+        // Lock the renderer state to safely access terminal
+        c_surface.core_surface.renderer_state.mutex.lock();
+        defer c_surface.core_surface.renderer_state.mutex.unlock();
+
+        const t: *terminal.Terminal = c_surface.core_surface.renderer_state.terminal;
+
+        // Create search
+        var search = terminal.search.PageListSearch.init(
+            global.alloc,
+            &t.screen.pages,
+            needle,
+        ) catch return false;
+        defer search.deinit();
+
+        // Collect all matches while holding the lock
+        // Allocate a buffer for up to 1000 matches
+        const max_matches = 1000;
+        var matches_buf = global.alloc.alloc(Selection, max_matches) catch return false;
+        var match_count: usize = 0;
+
+        while (match_count < max_matches) {
+            const sel = search.next() catch break;
+            if (sel == null) break;
+
+            const s = sel.?;
+            const start = s.start();
+            const end = s.end();
+
+            matches_buf[match_count] = .{
+                .tl = .{
+                    .tag = .active,
+                    .coord_tag = .exact,
+                    .x = start.x,
+                    .y = start.y,
+                },
+                .br = .{
+                    .tag = .active,
+                    .coord_tag = .exact,
+                    .x = end.x,
+                    .y = end.y,
+                },
+                .rectangle = s.rectangle,
+            };
+            match_count += 1;
+        }
+
+        // Resize to actual count
+        const results = global.alloc.realloc(matches_buf, match_count) catch {
+            global.alloc.free(matches_buf);
+            return false;
+        };
+        c_results.* = .{
+            .selections = results.ptr,
+            .count = results.len,
+        };
+
+        return true;
+    }
+
+    export fn ghostty_surface_search_free(c_results: *SearchResults) void {
+        c_results.deinit();
+    }
+
+    // Deprecated: kept for compatibility, does nothing
+    export fn ghostty_surface_search_next(
+        _: *anyopaque,
+        _: *Selection,
+    ) bool {
+        return false;
+    }
+
     /// Tell the surface that it needs to schedule a render
     export fn ghostty_surface_refresh(surface: *Surface) void {
         surface.refresh();

@@ -48,7 +48,10 @@ class BaseTerminalController: NSWindowController,
 
     /// This can be set to show/hide the command palette.
     @Published var commandPaletteIsShowing: Bool = false
-    
+
+    /// This can be set to show/hide the find panel.
+    @Published var findPanelIsShowing: Bool = false
+
     /// Set if the terminal view should show the update overlay.
     @Published var updateOverlayIsVisible: Bool = false
 
@@ -1111,6 +1114,10 @@ class BaseTerminalController: NSWindowController,
 
     @IBAction func toggleCommandPalette(_ sender: Any?) {
         commandPaletteIsShowing.toggle()
+    }
+
+    @IBAction func toggleFindPanel(_ sender: Any?) {
+        findPanelIsShowing.toggle()
     }
 
     @objc func resetTerminal(_ sender: Any) {

@@ -31,7 +31,10 @@ protocol TerminalViewModel: ObservableObject {
 
     /// The command palette state.
     var commandPaletteIsShowing: Bool { get set }
-    
+
+    /// The find panel state.
+    var findPanelIsShowing: Bool { get set }
+
     /// The update overlay should be visible.
     var updateOverlayIsVisible: Bool { get }
 }
@@ -112,8 +115,13 @@ struct TerminalView<ViewModel: TerminalViewModel>: View {
                         updateViewModel: (NSApp.delegate as? AppDelegate)?.updateViewModel) { action in
                         self.delegate?.performAction(action, on: surfaceView)
                     }
+
+                    FindPanelView(
+                        surfaceView: surfaceView,
+                        isPresented: $viewModel.findPanelIsShowing
+                    )
                 }
-                
+
                 // Show update information above all else.
                 if viewModel.updateOverlayIsVisible {
                     UpdateOverlay()

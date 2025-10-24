@@ -305,9 +305,18 @@ const SlidingWindow = struct {
 
         // Our data offset now moves to needle.len - 1 from the end so
         // that we can handle the overlap case.
-        self.data_offset = self.data.len() - self.needle.len + 1;
-
-        self.assertIntegrity();
+        // But ensure data_offset stays within bounds (< data.len()).
+        if (self.data.len() > 0) {
+            if (self.data.len() > self.needle.len) {
+                // Clamp to ensure offset < data.len()
+                const desired_offset = self.data.len() - self.needle.len + 1;
+                self.data_offset = @min(desired_offset, self.data.len() - 1);
+            } else {
+                // If data is smaller than or equal to needle, use last valid index
+                self.data_offset = self.data.len() - 1;
+            }
+            self.assertIntegrity();
+        }
         return null;
     }
 
