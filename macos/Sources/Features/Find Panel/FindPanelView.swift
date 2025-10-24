@@ -18,9 +18,6 @@ struct FindPanelView: View {
     /// Total number of matches found.
     @State private var totalMatches: Int = 0
 
-    /// Whether case-sensitive search is enabled.
-    @State private var caseSensitive: Bool = false
-
     /// Focus state for the search field.
     @FocusState private var searchFieldFocused: Bool
 
@@ -96,15 +93,6 @@ struct FindPanelView: View {
             .disabled(totalMatches == 0)
             .help("Find Next (Return)")
 
-            // Case sensitive toggle
-            Button(action: { caseSensitive.toggle() }) {
-                Text("Aa")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(caseSensitive ? .accentColor : .secondary)
-            }
-            .buttonStyle(.borderless)
-            .help("Match Case")
-
             // Close button
             Button(action: { isPresented = false }) {
                 Image(systemName: "xmark")
@@ -156,12 +144,9 @@ struct FindPanelView: View {
             return
         }
 
-        // TODO: Call into the Zig search API to find all matches
-        // For now, this is a placeholder
-        let searchQuery = caseSensitive ? searchText : searchText.lowercased()
-
-        // This will be implemented once we wire up the C API
-        surfaceView.performSearch(query: searchQuery, caseSensitive: caseSensitive) { matches in
+        // NOTE: The Zig search API is currently case-sensitive only,
+        // so we always pass the original search text and caseSensitive=true
+        surfaceView.performSearch(query: searchText, caseSensitive: true) { matches in
             totalMatches = matches
             if matches > 0 {
                 currentMatchIndex = 0
