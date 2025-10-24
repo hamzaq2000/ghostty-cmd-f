@@ -1602,27 +1602,25 @@ pub const CAPI = struct {
 
     /// Search API
 
-    const SearchResults = extern struct {
-        selections: [*]Selection,
-        count: usize,
+    const SearchHandle = struct {
+        selections: []terminal.Selection,
+        alloc: std.mem.Allocator,
 
-        pub fn deinit(self: *SearchResults) void {
-            if (self.count > 0) {
-                global.alloc.free(self.selections[0..self.count]);
-            }
+        pub fn deinit(self: *SearchHandle) void {
+            self.alloc.free(self.selections);
+            self.alloc.destroy(self);
         }
     };
 
-    /// Perform a search and return all matches at once.
+    /// Perform a search and return a handle with all matches.
     /// This holds the terminal lock for the entire search to ensure thread safety.
-    /// The caller must free the results with ghostty_surface_search_free.
+    /// The caller must free the handle with ghostty_surface_search_free.
     export fn ghostty_surface_search_create(
         c_surface: *Surface,
         c_needle: [*:0]const u8,
-        c_results: *SearchResults,
-    ) bool {
+    ) ?*SearchHandle {
         const needle = std.mem.span(c_needle);
-        if (needle.len == 0) return false;
+        if (needle.len == 0) return null;
 
         // Lock the renderer state to safely access terminal
         c_surface.core_surface.renderer_state.mutex.lock();
@@ -1635,56 +1633,81 @@ pub const CAPI = struct {
             global.alloc,
             &t.screen.pages,
             needle,
-        ) catch return false;
+        ) catch return null;
         defer search.deinit();
 
         // Collect all matches while holding the lock
-        // Allocate a buffer for up to 1000 matches
         const max_matches = 1000;
-        var matches_buf = global.alloc.alloc(Selection, max_matches) catch return false;
+        var matches_buf = global.alloc.alloc(terminal.Selection, max_matches) catch return null;
         var match_count: usize = 0;
 
         while (match_count < max_matches) {
             const sel = search.next() catch break;
-            if (sel == null) break;
-
-            const s = sel.?;
-            const start = s.start();
-            const end = s.end();
-
-            matches_buf[match_count] = .{
-                .tl = .{
-                    .tag = .active,
-                    .coord_tag = .exact,
-                    .x = start.x,
-                    .y = start.y,
-                },
-                .br = .{
-                    .tag = .active,
-                    .coord_tag = .exact,
-                    .x = end.x,
-                    .y = end.y,
-                },
-                .rectangle = s.rectangle,
-            };
-            match_count += 1;
+            if (sel) |s| {
+                matches_buf[match_count] = s;
+                match_count += 1;
+            } else break;
         }
 
         // Resize to actual count
         const results = global.alloc.realloc(matches_buf, match_count) catch {
             global.alloc.free(matches_buf);
-            return false;
-        };
-        c_results.* = .{
-            .selections = results.ptr,
-            .count = results.len,
+            return null;
         };
 
-        return true;
+        // Create handle
+        const handle = global.alloc.create(SearchHandle) catch {
+            global.alloc.free(results);
+            return null;
+        };
+        handle.* = .{
+            .selections = results,
+            .alloc = global.alloc,
+        };
+
+        return handle;
     }
 
-    export fn ghostty_surface_search_free(c_results: *SearchResults) void {
-        c_results.deinit();
+    export fn ghostty_surface_search_count(handle: *SearchHandle) usize {
+        return handle.selections.len;
+    }
+
+    export fn ghostty_surface_search_highlight(
+        c_surface: *Surface,
+        handle: *SearchHandle,
+        index: usize,
+    ) void {
+        if (index >= handle.selections.len) return;
+
+        c_surface.core_surface.renderer_state.mutex.lock();
+        defer c_surface.core_surface.renderer_state.mutex.unlock();
+
+        const t: *terminal.Terminal = c_surface.core_surface.renderer_state.terminal;
+        t.screen.select(handle.selections[index]) catch {
+            t.screen.clearSelection();
+            t.screen.search_mode = false;
+            return;
+        };
+
+        // Enable search mode to use yellow highlighting
+        t.screen.search_mode = true;
+
+        // Mark the screen as dirty to trigger a refresh
+        t.screen.dirty.selection = true;
+    }
+
+    export fn ghostty_surface_search_clear(c_surface: *Surface) void {
+        c_surface.core_surface.renderer_state.mutex.lock();
+        defer c_surface.core_surface.renderer_state.mutex.unlock();
+
+        const t: *terminal.Terminal = c_surface.core_surface.renderer_state.terminal;
+        t.screen.search_mode = false;
+        t.screen.clearSelection();
+        t.screen.dirty.selection = true;
+    }
+
+    export fn ghostty_surface_search_free(handle: *SearchHandle) void {
+        handle.deinit();
     }
 
     // Deprecated: kept for compatibility, does nothing

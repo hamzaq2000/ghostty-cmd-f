@@ -52,6 +52,10 @@ saved_cursor: ?SavedCursor = null,
 /// automatically setup tracking.
 selection: ?Selection = null,
 
+/// Whether the current selection is a search match highlight.
+/// When true, the renderer will use search highlight colors (yellow).
+search_mode: bool = false,
+
 /// The charset state
 charset: CharsetState = .{},
 

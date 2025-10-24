@@ -2637,6 +2637,11 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                     // The final background color for the cell.
                     const bg = bg: {
                         if (selected) {
+                            // Use yellow for search match highlighting
+                            if (screen.search_mode) {
+                                break :bg terminal.color.RGB{ .r = 255, .g = 255, .b = 100 };
+                            }
+
                             // If we have an explicit selection background color
                             // specified int he config, use that
                             if (self.config.selection_background) |v| {
@@ -2680,6 +2685,11 @@ pub fn Renderer(comptime GraphicsAPI: type) type {
                         // - Cell is selected, not inverted, and set to cell-background
                         // - Cell is inverted and not selected
                         if (selected) {
+                            // Use black for search match text (yellow background)
+                            if (screen.search_mode) {
+                                break :fg terminal.color.RGB{ .r = 0, .g = 0, .b = 0 };
+                            }
+
                             // Use the selection foreground if set
                             if (self.config.selection_foreground) |v| {
                                 break :fg switch (v) {

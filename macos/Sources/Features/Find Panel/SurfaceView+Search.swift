@@ -6,18 +6,20 @@ extension Ghostty.SurfaceView {
     private class SearchState {
         var query: String
         var caseSensitive: Bool
-        var matches: [SearchMatch] = []
+        var handle: OpaquePointer
+        var count: Int
         var currentIndex: Int = 0
 
-        init(query: String, caseSensitive: Bool) {
+        init(query: String, caseSensitive: Bool, handle: OpaquePointer, count: Int) {
             self.query = query
             self.caseSensitive = caseSensitive
+            self.handle = handle
+            self.count = count
         }
-    }
 
-    /// Represents a single search match location.
-    private struct SearchMatch {
-        var selection: ghostty_selection_s
+        deinit {
+            ghostty_surface_search_free(handle)
+        }
     }
 
     /// The key for storing search state in associated objects.
@@ -60,15 +62,22 @@ extension Ghostty.SurfaceView {
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self = self else { return }
 
-            // Create results structure
-            var results = ghostty_search_results_s()
-
             // Perform the search (this holds the lock internally)
-            let success = searchQuery.withCString { cString in
-                ghostty_surface_search_create(surface, cString, &results)
+            guard let handle = searchQuery.withCString({ cString in
+                ghostty_surface_search_create(surface, cString)
+            }) else {
+                DispatchQueue.main.async {
+                    self.searchState = nil
+                    completion(0)
+                }
+                return
             }
 
-            guard success, results.count > 0 else {
+            // Get the count
+            let count = Int(ghostty_surface_search_count(handle))
+
+            guard count > 0 else {
+                ghostty_surface_search_free(handle)
                 DispatchQueue.main.async {
                     self.searchState = nil
                     completion(0)
@@ -77,24 +86,15 @@ extension Ghostty.SurfaceView {
             }
 
             // Create new search state
-            let state = SearchState(query: searchQuery, caseSensitive: caseSensitive)
-
-            // Convert the C array to Swift array
-            let selectionsBuffer = UnsafeBufferPointer(start: results.selections, count: results.count)
-            state.matches = selectionsBuffer.map { SearchMatch(selection: $0) }
-
-            // Free the C results
-            ghostty_surface_search_free(&results)
+            let state = SearchState(query: searchQuery, caseSensitive: caseSensitive, handle: handle, count: count)
 
             // Update UI on main thread
             DispatchQueue.main.async {
                 self.searchState = state
-                completion(state.matches.count)
+                completion(count)
 
-                // If we have matches, highlight the first one
-                if !state.matches.isEmpty {
-                    self.highlightMatch(at: 0)
-                }
+                // Highlight the first match
+                self.highlightMatch(at: 0)
             }
         }
     }
@@ -104,7 +104,7 @@ extension Ghostty.SurfaceView {
     func highlightMatch(at index: Int) {
         guard let state = searchState,
               index >= 0,
-              index < state.matches.count,
+              index < state.count,
               let surface = self.surface else {
             return
         }
@@ -112,13 +112,18 @@ extension Ghostty.SurfaceView {
         // Update the current index
         state.currentIndex = index
 
-        // TODO: Visual highlighting not yet implemented
-        // Need to implement selection highlighting through C API
+        // Highlight this match
+        ghostty_surface_search_highlight(surface, state.handle, index)
+
+        // Trigger a refresh to show the highlight
+        ghostty_surface_refresh(surface)
     }
 
     /// Clear all search highlights.
     func clearSearchHighlights() {
+        if let surface = self.surface {
+            ghostty_surface_search_clear(surface)
+        }
         searchState = nil
-        // TODO: Clear visual highlighting when implemented
     }
 }
