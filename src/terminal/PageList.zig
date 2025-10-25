@@ -3114,10 +3114,6 @@ pub fn countTrackedPins(self: *const PageList) usize {
 /// expensive operation since we traverse the entire linked list in the
 /// worst case. Only for runtime safety/debug.
 pub fn pinIsValid(self: *const PageList, p: Pin) bool {
-    // This is very slow so we want to ensure we only ever
-    // call this during slow runtime safety builds.
-    comptime assert(build_options.slow_runtime_safety);
-
     var it = self.pages.first;
     while (it) |node| : (it = node.next) {
         if (node != p.node) continue;
