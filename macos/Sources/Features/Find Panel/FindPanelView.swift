@@ -24,6 +24,9 @@ struct FindPanelView: View {
     /// Internal focus state for the search field.
     @FocusState private var searchFieldFocusedInternal: Bool
 
+    /// Event monitor for Escape key handling.
+    @State private var eventMonitor: Any?
+
     var body: some View {
         HStack(spacing: 8) {
             Spacer()
@@ -103,7 +106,6 @@ struct FindPanelView: View {
             }
             .buttonStyle(.borderless)
             .help("Close (Escape)")
-            .keyboardShortcut(.escape, modifiers: [])
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
@@ -115,6 +117,28 @@ struct FindPanelView: View {
             // Focus the search field when the view appears
             DispatchQueue.main.async {
                 searchFieldFocusedInternal = true
+            }
+
+            // Set up local event monitor for Escape key
+            eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard event.keyCode == 53 else { return event } // 53 = Escape
+
+                if !searchText.isEmpty {
+                    searchText = ""
+                    totalMatches = 0
+                    currentMatchIndex = 0
+                    clearHighlights()
+                } else {
+                    isPresented = false
+                }
+                return nil // Event handled
+            }
+        }
+        .onDisappear {
+            // Remove event monitor when view disappears
+            if let monitor = eventMonitor {
+                NSEvent.removeMonitor(monitor)
+                eventMonitor = nil
             }
         }
         .onChange(of: searchFieldFocusedInternal) { newValue in
